@@ -5,7 +5,6 @@ public class PlayerController : MonoBehaviour
     public float speed = 10f;
     public float dashSpeed = 30f;
     public float dashDuration = 0.2f;
-    public float doubleTapTime = 0.3f;
 
     private Rigidbody rb;
     private Animator animator;
@@ -13,23 +12,44 @@ public class PlayerController : MonoBehaviour
     private bool isDashing = false;
     private float dashTimer = 0f;
     private Vector3 dashDirection;
-
-    private float lastTapTimeW, lastTapTimeS, lastTapTimeA, lastTapTimeD;
+    private Vector3 moveInput;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-
-        // 子にある力士モデルのAnimatorを取得
         animator = GetComponentInChildren<Animator>();
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.W)) { if (Time.time - lastTapTimeW < doubleTapTime) StartDash(Vector3.back); lastTapTimeW = Time.time; }
-        if (Input.GetKeyDown(KeyCode.S)) { if (Time.time - lastTapTimeS < doubleTapTime) StartDash(Vector3.forward); lastTapTimeS = Time.time; }
-        if (Input.GetKeyDown(KeyCode.A)) { if (Time.time - lastTapTimeA < doubleTapTime) StartDash(Vector3.right); lastTapTimeA = Time.time; }
-        if (Input.GetKeyDown(KeyCode.D)) { if (Time.time - lastTapTimeD < doubleTapTime) StartDash(Vector3.left); lastTapTimeD = Time.time; }
+        // 【超強力なコントローラー入力取得】
+        // システムに登録された「すべてのジョイスティック」から、1番目のスティック入力を直接取得します。
+        // これにより、Input Managerでの認識番号のズレを完全に無視して1台目を動かせます。
+        float h_pad = Input.GetAxisRaw("Horizontal"); // デフォルトの共通Horizontalを使用
+        float v_pad = Input.GetAxisRaw("Vertical");   // デフォルトの共通Verticalを使用
+
+        // キーボード(1P)の入力を取得
+        float h_kb = 0f;
+        float v_kb = 0f;
+        if (Input.GetKey(KeyCode.A)) h_kb = -1f;
+        if (Input.GetKey(KeyCode.D)) h_kb = 1f;
+        if (Input.GetKey(KeyCode.W)) v_kb = 1f;
+        if (Input.GetKey(KeyCode.S)) v_kb = -1f;
+
+        // 両方の入力を合成
+        float h = (Mathf.Abs(h_pad) > 0.1f) ? h_pad : h_kb;
+        float v = (Mathf.Abs(v_pad) > 0.1f) ? v_pad : v_kb;
+
+        moveInput = new Vector3(-h, 0f, -v).normalized; // 元のコードの反転を維持
+
+        // 1台目の「Aボタン（ボタン0）」をどのコントローラーからでも強制検知
+        // もしくは キーボードの左Shift
+        bool isDashPressed = Input.GetKeyDown(KeyCode.JoystickButton0) || Input.GetKeyDown(KeyCode.LeftShift);
+
+        if (!isDashing && moveInput.magnitude > 0.1f && isDashPressed)
+        {
+            StartDash(moveInput);
+        }
 
         if (isDashing)
         {
@@ -47,16 +67,20 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        float h = 0f;
-        float v = 0f;
+        // アニメーション用の移動量
+        float h_pad = Input.GetAxisRaw("Horizontal");
+        float v_pad = Input.GetAxisRaw("Vertical");
+        float h_kb = 0f;
+        float v_kb = 0f;
+        if (Input.GetKey(KeyCode.A)) h_kb = -1f;
+        if (Input.GetKey(KeyCode.D)) h_kb = 1f;
+        if (Input.GetKey(KeyCode.W)) v_kb = 1f;
+        if (Input.GetKey(KeyCode.S)) v_kb = -1f;
 
-        if (Input.GetKey(KeyCode.A)) h = -1f;
-        if (Input.GetKey(KeyCode.D)) h = 1f;
-        if (Input.GetKey(KeyCode.W)) v = 1f;
-        if (Input.GetKey(KeyCode.S)) v = -1f;
+        float finalH = (Mathf.Abs(h_pad) > 0.1f) ? h_pad : h_kb;
+        float finalV = (Mathf.Abs(v_pad) > 0.1f) ? v_pad : v_kb;
+        float moveAmount = Mathf.Abs(finalH) + Mathf.Abs(finalV);
 
-        // Animatorに移動量を送る
-        float moveAmount = Mathf.Abs(h) + Mathf.Abs(v);
         if (animator != null)
         {
             animator.SetFloat("Speed", moveAmount);
@@ -68,7 +92,7 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        rb.MovePosition(rb.position + new Vector3(-h, 0, -v) * speed * Time.fixedDeltaTime);
+        rb.MovePosition(rb.position + moveInput * speed * Time.fixedDeltaTime);
     }
 
     void OnCollisionEnter(Collision collision)

@@ -1,11 +1,11 @@
 using UnityEngine;
+using UnityEngine.InputSystem; // 新しいInput Systemをインポート
 
 public class EnemyController : MonoBehaviour
 {
     public float speed = 10f;
     public float dashSpeed = 30f;
     public float dashDuration = 0.2f;
-    public float doubleTapTime = 0.3f;
 
     private Rigidbody rb;
     private Animator animator;
@@ -13,29 +13,59 @@ public class EnemyController : MonoBehaviour
     private bool isDashing = false;
     private float dashTimer = 0f;
     private Vector3 dashDirection;
-
-    private float lastTapTimeUp, lastTapTimeDown, lastTapTimeLeft, lastTapTimeRight;
+    private Vector3 moveInput;
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-
-        // 子にある2PモデルのAnimatorを取得
         animator = GetComponentInChildren<Animator>();
     }
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.UpArrow)) { if (Time.time - lastTapTimeUp < doubleTapTime) StartDash(Vector3.back); lastTapTimeUp = Time.time; }
-        if (Input.GetKeyDown(KeyCode.DownArrow)) { if (Time.time - lastTapTimeDown < doubleTapTime) StartDash(Vector3.forward); lastTapTimeDown = Time.time; }
-        if (Input.GetKeyDown(KeyCode.LeftArrow)) { if (Time.time - lastTapTimeLeft < doubleTapTime) StartDash(Vector3.right); lastTapTimeLeft = Time.time; }
-        if (Input.GetKeyDown(KeyCode.RightArrow)) { if (Time.time - lastTapTimeRight < doubleTapTime) StartDash(Vector3.left); lastTapTimeRight = Time.time; }
+        float h = 0f;
+        float v = 0f;
+        bool isDashPressed = false;
+
+        // PCにゲームパッドが「2台以上」接続されている場合
+        if (Gamepad.all.Count > 1)
+        {
+            // 確実に「2台目（インデックス1）」のコントローラーを取得
+            var gamepad = Gamepad.all[1];
+            Vector2 stick = gamepad.leftStick.ReadValue();
+            h = stick.x;
+            v = stick.y;
+
+            // 2台目のAボタン (buttonSouth) が押されたか判定
+            isDashPressed = gamepad.buttonSouth.wasPressedThisFrame;
+        }
+
+        // キーボード（矢印キー）の入力
+        float h_kb = 0f;
+        float v_kb = 0f;
+        if (Input.GetKey(KeyCode.LeftArrow)) h_kb = -1f;
+        if (Input.GetKey(KeyCode.RightArrow)) h_kb = 1f;
+        if (Input.GetKey(KeyCode.UpArrow)) v_kb = 1f;
+        if (Input.GetKey(KeyCode.DownArrow)) v_kb = -1f;
+
+        // コントローラーが動いていればそちらを優先、なければキーボード
+        float finalH = (Mathf.Abs(h) > 0.1f) ? h : h_kb;
+        float finalV = (Mathf.Abs(v) > 0.1f) ? v : v_kb;
+
+        moveInput = new Vector3(-finalH, 0f, -finalV).normalized; // 元の反転を維持
+
+        // スペースキーでもダッシュ可能
+        if (Input.GetKeyDown(KeyCode.Space)) isDashPressed = true;
+
+        if (!isDashing && moveInput.magnitude > 0.1f && isDashPressed)
+        {
+            StartDash(moveInput);
+        }
 
         if (isDashing)
         {
             dashTimer -= Time.deltaTime;
-            if (dashTimer <= 0f)
-                isDashing = false;
+            if (dashTimer <= 0f) isDashing = false;
         }
     }
 
@@ -48,16 +78,25 @@ public class EnemyController : MonoBehaviour
 
     void FixedUpdate()
     {
+        // アニメーション用の移動量
         float h = 0f;
         float v = 0f;
+        if (Gamepad.all.Count > 1)
+        {
+            Vector2 stick = Gamepad.all[1].leftStick.ReadValue();
+            h = stick.x;
+            v = stick.y;
+        }
+        float h_kb = 0f;
+        float v_kb = 0f;
+        if (Input.GetKey(KeyCode.LeftArrow)) h_kb = -1f;
+        if (Input.GetKey(KeyCode.RightArrow)) h_kb = 1f;
+        if (Input.GetKey(KeyCode.UpArrow)) v_kb = 1f;
+        if (Input.GetKey(KeyCode.DownArrow)) v_kb = -1f;
 
-        if (Input.GetKey(KeyCode.LeftArrow)) h = -1f;
-        if (Input.GetKey(KeyCode.RightArrow)) h = 1f;
-        if (Input.GetKey(KeyCode.UpArrow)) v = 1f;
-        if (Input.GetKey(KeyCode.DownArrow)) v = -1f;
-
-        // Animatorへ移動量を送る
-        float moveAmount = Mathf.Abs(h) + Mathf.Abs(v);
+        float finalH = (Mathf.Abs(h) > 0.1f) ? h : h_kb;
+        float finalV = (Mathf.Abs(v) > 0.1f) ? v : v_kb;
+        float moveAmount = Mathf.Abs(finalH) + Mathf.Abs(finalV);
 
         if (animator != null)
         {
@@ -66,10 +105,10 @@ public class EnemyController : MonoBehaviour
 
         if (isDashing)
         {
-            rb.MovePosition(rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime);
+            rb.MovePosition(rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime);//
             return;
         }
 
-        rb.MovePosition(rb.position + new Vector3(-h, 0, -v) * speed * Time.fixedDeltaTime);
+        rb.MovePosition(rb.position + moveInput * speed * Time.fixedDeltaTime);
     }
 }
