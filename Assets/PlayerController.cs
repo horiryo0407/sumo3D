@@ -8,6 +8,8 @@ public class PlayerController : MonoBehaviour
     public float doubleTapTime = 0.3f;
 
     private Rigidbody rb;
+    private Animator animator;
+
     private bool isDashing = false;
     private float dashTimer = 0f;
     private Vector3 dashDirection;
@@ -17,6 +19,9 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
+
+        // 子にある力士モデルのAnimatorを取得
+        animator = GetComponentInChildren<Animator>();
     }
 
     void Update()
@@ -42,18 +47,26 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (isDashing)
-        {
-            rb.MovePosition(rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime);
-            return;　
-        }
-
         float h = 0f;
         float v = 0f;
+
         if (Input.GetKey(KeyCode.A)) h = -1f;
         if (Input.GetKey(KeyCode.D)) h = 1f;
         if (Input.GetKey(KeyCode.W)) v = 1f;
         if (Input.GetKey(KeyCode.S)) v = -1f;
+
+        // Animatorに移動量を送る
+        float moveAmount = Mathf.Abs(h) + Mathf.Abs(v);
+        if (animator != null)
+        {
+            animator.SetFloat("Speed", moveAmount);
+        }
+
+        if (isDashing)
+        {
+            rb.MovePosition(rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime);
+            return;
+        }
 
         rb.MovePosition(rb.position + new Vector3(-h, 0, -v) * speed * Time.fixedDeltaTime);
     }
@@ -62,7 +75,7 @@ public class PlayerController : MonoBehaviour
     {
         if (collision.gameObject.name == "Enemy")
         {
-            Debug.Log("敵に当たった！"); 
+            Debug.Log("敵に当たった！");
         }
     }
 }
