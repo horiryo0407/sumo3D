@@ -6,9 +6,6 @@ public class PlayerController : MonoBehaviour
     public float dashSpeed = 30f;
     public float dashDuration = 0.2f;
 
-    // 北斗剛掌波
-    public float chargeTime = 1.0f;
-
     private Rigidbody rb;
     private Animator animator;
 
@@ -16,9 +13,6 @@ public class PlayerController : MonoBehaviour
     private float dashTimer = 0f;
     private Vector3 dashDirection;
     private Vector3 moveInput;
-
-    private bool isCharging = false;
-    private float chargeTimer = 0f;
 
 
     void Start()
@@ -30,42 +24,13 @@ public class PlayerController : MonoBehaviour
 
     void Update()
     {
-        // 北斗剛掌波開始
-        if (Input.GetKeyDown(KeyCode.F) && !isCharging)
+        // パンチ
+        if (Input.GetKeyDown(KeyCode.F))
         {
-            isCharging = true;
-            chargeTimer = chargeTime;
-
-            // 歩きアニメを止める
             if (animator != null)
             {
-                animator.SetFloat("Speed", 0f);
-                animator.Play("DwarfM@Idle01");
+                animator.SetTrigger("Attack");
             }
-
-            Debug.Log("北斗剛掌波 溜め開始！");
-        }
-
-
-        // 溜め中
-        if (isCharging)
-        {
-            chargeTimer -= Time.deltaTime;
-
-            if (chargeTimer <= 0f)
-            {
-                isCharging = false;
-
-                // 攻撃モーション再生
-                if (animator != null)
-                {
-                    animator.SetTrigger("Attack");
-                }
-
-                Debug.Log("北斗剛掌波 発射！！");
-            }
-
-            return;
         }
 
 
@@ -123,20 +88,6 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        // 溜め中は完全停止
-        if (isCharging)
-        {
-            rb.linearVelocity = Vector3.zero;
-
-            if (animator != null)
-            {
-                animator.SetFloat("Speed", 0f);
-            }
-
-            return;
-        }
-
-
         float h_pad = Input.GetAxisRaw("Horizontal");
         float v_pad = Input.GetAxisRaw("Vertical");
 
