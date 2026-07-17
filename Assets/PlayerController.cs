@@ -14,6 +14,10 @@ public class PlayerController : MonoBehaviour
     private Vector3 dashDirection;
     private Vector3 moveInput;
 
+    // 剛掌波用
+    private bool pPressed = false;
+    private bool oPressed = false;
+
 
     void Start()
     {
@@ -32,6 +36,81 @@ public class PlayerController : MonoBehaviour
                 animator.SetTrigger("Attack");
             }
         }
+
+
+        // Pキー入力
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            pPressed = true;
+        }
+
+
+        // Oキー入力
+        if (Input.GetKeyDown(KeyCode.O))
+        {
+            oPressed = true;
+        }
+
+
+        // P + Oで剛掌波
+        if (pPressed && oPressed)
+        {
+            if (animator != null)
+            {
+                animator.SetTrigger("Gosho");
+            }
+
+            pPressed = false;
+            oPressed = false;
+        }
+
+
+        // キーを離したらリセット
+        if (Input.GetKeyUp(KeyCode.P))
+        {
+            pPressed = false;
+        }
+
+        if (Input.GetKeyUp(KeyCode.O))
+        {
+            oPressed = false;
+        }
+
+
+
+        // エモート
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            if (animator != null)
+            {
+                animator.SetTrigger("EmoteUp");
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            if (animator != null)
+            {
+                animator.SetTrigger("EmoteDown");
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            if (animator != null)
+            {
+                animator.SetTrigger("EmoteLeft");
+            }
+        }
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            if (animator != null)
+            {
+                animator.SetTrigger("EmoteRight");
+            }
+        }
+
 
 
         // コントローラー入力
@@ -56,6 +135,7 @@ public class PlayerController : MonoBehaviour
         moveInput = new Vector3(-h, 0f, -v).normalized;
 
 
+
         // ダッシュ
         bool isDashPressed =
             Input.GetKeyDown(KeyCode.JoystickButton0) ||
@@ -78,12 +158,14 @@ public class PlayerController : MonoBehaviour
     }
 
 
+
     void StartDash(Vector3 direction)
     {
         isDashing = true;
         dashTimer = dashDuration;
         dashDirection = direction;
     }
+
 
 
     void FixedUpdate()
@@ -127,6 +209,7 @@ public class PlayerController : MonoBehaviour
             rb.position + moveInput * speed * Time.fixedDeltaTime
         );
     }
+
 
 
     void OnCollisionEnter(Collision collision)
