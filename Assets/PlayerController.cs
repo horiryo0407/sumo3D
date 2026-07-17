@@ -14,9 +14,13 @@ public class PlayerController : MonoBehaviour
     private Vector3 dashDirection;
     private Vector3 moveInput;
 
+
     // 剛掌波用
-    private bool pPressed = false;
-    private bool oPressed = false;
+    private bool isGoshoCharging = false;
+
+    public GameObject goshoBeamPrefab;
+    public Transform goshoPoint;
+
 
 
     void Start()
@@ -24,6 +28,7 @@ public class PlayerController : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         animator = GetComponentInChildren<Animator>();
     }
+
 
 
     void Update()
@@ -38,42 +43,36 @@ public class PlayerController : MonoBehaviour
         }
 
 
-        // Pキー入力
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            pPressed = true;
-        }
 
-
-        // Oキー入力
+        // Oで剛掌波溜め開始
         if (Input.GetKeyDown(KeyCode.O))
         {
-            oPressed = true;
-        }
-
-
-        // P + Oで剛掌波
-        if (pPressed && oPressed)
-        {
-            if (animator != null)
+            if (!isGoshoCharging)
             {
-                animator.SetTrigger("Gosho");
+                isGoshoCharging = true;
+
+                if (animator != null)
+                {
+                    animator.SetTrigger("Gosho");
+                }
+
+                Debug.Log("剛掌波 溜め開始");
             }
-
-            pPressed = false;
-            oPressed = false;
         }
 
 
-        // キーを離したらリセット
-        if (Input.GetKeyUp(KeyCode.P))
-        {
-            pPressed = false;
-        }
 
-        if (Input.GetKeyUp(KeyCode.O))
+        // Pで発射
+        if (Input.GetKeyDown(KeyCode.P))
         {
-            oPressed = false;
+            if (isGoshoCharging)
+            {
+                FireGoshoBeam();
+
+                isGoshoCharging = false;
+
+                Debug.Log("剛掌波 発射！");
+            }
         }
 
 
@@ -81,35 +80,24 @@ public class PlayerController : MonoBehaviour
         // エモート
         if (Input.GetKeyDown(KeyCode.UpArrow))
         {
-            if (animator != null)
-            {
-                animator.SetTrigger("EmoteUp");
-            }
+            animator.SetTrigger("EmoteUp");
         }
 
         if (Input.GetKeyDown(KeyCode.DownArrow))
         {
-            if (animator != null)
-            {
-                animator.SetTrigger("EmoteDown");
-            }
+            animator.SetTrigger("EmoteDown");
         }
 
         if (Input.GetKeyDown(KeyCode.LeftArrow))
         {
-            if (animator != null)
-            {
-                animator.SetTrigger("EmoteLeft");
-            }
+            animator.SetTrigger("EmoteLeft");
         }
 
         if (Input.GetKeyDown(KeyCode.RightArrow))
         {
-            if (animator != null)
-            {
-                animator.SetTrigger("EmoteRight");
-            }
+            animator.SetTrigger("EmoteRight");
         }
+
 
 
 
@@ -118,14 +106,15 @@ public class PlayerController : MonoBehaviour
         float v_pad = Input.GetAxisRaw("Vertical");
 
 
-        // キーボード入力
         float h_kb = 0f;
         float v_kb = 0f;
+
 
         if (Input.GetKey(KeyCode.A)) h_kb = -1f;
         if (Input.GetKey(KeyCode.D)) h_kb = 1f;
         if (Input.GetKey(KeyCode.W)) v_kb = 1f;
         if (Input.GetKey(KeyCode.S)) v_kb = -1f;
+
 
 
         float h = (Mathf.Abs(h_pad) > 0.1f) ? h_pad : h_kb;
@@ -142,10 +131,12 @@ public class PlayerController : MonoBehaviour
             Input.GetKeyDown(KeyCode.LeftShift);
 
 
+
         if (!isDashing && moveInput.magnitude > 0.1f && isDashPressed)
         {
             StartDash(moveInput);
         }
+
 
 
         if (isDashing)
@@ -153,9 +144,29 @@ public class PlayerController : MonoBehaviour
             dashTimer -= Time.deltaTime;
 
             if (dashTimer <= 0f)
+            {
                 isDashing = false;
+            }
         }
     }
+
+
+
+
+
+    // 剛掌波発射
+    void FireGoshoBeam()
+    {
+        if (goshoBeamPrefab != null && goshoPoint != null)
+        {
+            Instantiate(
+                goshoBeamPrefab,
+                goshoPoint.position,
+                goshoPoint.rotation
+            );
+        }
+    }
+
 
 
 
@@ -168,6 +179,8 @@ public class PlayerController : MonoBehaviour
 
 
 
+
+
     void FixedUpdate()
     {
         float h_pad = Input.GetAxisRaw("Horizontal");
@@ -177,17 +190,21 @@ public class PlayerController : MonoBehaviour
         float h_kb = 0f;
         float v_kb = 0f;
 
+
         if (Input.GetKey(KeyCode.A)) h_kb = -1f;
         if (Input.GetKey(KeyCode.D)) h_kb = 1f;
         if (Input.GetKey(KeyCode.W)) v_kb = 1f;
         if (Input.GetKey(KeyCode.S)) v_kb = -1f;
 
 
+
         float finalH = (Mathf.Abs(h_pad) > 0.1f) ? h_pad : h_kb;
         float finalV = (Mathf.Abs(v_pad) > 0.1f) ? v_pad : v_kb;
 
 
+
         float moveAmount = Mathf.Abs(finalH) + Mathf.Abs(finalV);
+
 
 
         if (animator != null)
@@ -196,19 +213,24 @@ public class PlayerController : MonoBehaviour
         }
 
 
+
         if (isDashing)
         {
             rb.MovePosition(
                 rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime
             );
+
             return;
         }
+
 
 
         rb.MovePosition(
             rb.position + moveInput * speed * Time.fixedDeltaTime
         );
     }
+
+
 
 
 
