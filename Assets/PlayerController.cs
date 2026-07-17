@@ -18,6 +18,9 @@ public class PlayerController : MonoBehaviour
     // 剛掌波用
     private bool isGoshoCharging = false;
 
+    public float goshoChargeLimit = 3f;
+    private float goshoTimer = 0f;
+
     public GameObject goshoBeamPrefab;
     public Transform goshoPoint;
 
@@ -51,12 +54,29 @@ public class PlayerController : MonoBehaviour
             {
                 isGoshoCharging = true;
 
+                goshoTimer = goshoChargeLimit;
+
                 if (animator != null)
                 {
                     animator.SetTrigger("Gosho");
                 }
 
                 Debug.Log("剛掌波 溜め開始");
+            }
+        }
+
+
+
+        // 溜め時間カウント
+        if (isGoshoCharging)
+        {
+            goshoTimer -= Time.deltaTime;
+
+            if (goshoTimer <= 0f)
+            {
+                isGoshoCharging = false;
+
+                Debug.Log("剛掌波キャンセル");
             }
         }
 
@@ -109,12 +129,10 @@ public class PlayerController : MonoBehaviour
         float h_kb = 0f;
         float v_kb = 0f;
 
-
         if (Input.GetKey(KeyCode.A)) h_kb = -1f;
         if (Input.GetKey(KeyCode.D)) h_kb = 1f;
         if (Input.GetKey(KeyCode.W)) v_kb = 1f;
         if (Input.GetKey(KeyCode.S)) v_kb = -1f;
-
 
 
         float h = (Mathf.Abs(h_pad) > 0.1f) ? h_pad : h_kb;
@@ -129,7 +147,6 @@ public class PlayerController : MonoBehaviour
         bool isDashPressed =
             Input.GetKeyDown(KeyCode.JoystickButton0) ||
             Input.GetKeyDown(KeyCode.LeftShift);
-
 
 
         if (!isDashing && moveInput.magnitude > 0.1f && isDashPressed)
@@ -170,10 +187,13 @@ public class PlayerController : MonoBehaviour
 
 
 
+
     void StartDash(Vector3 direction)
     {
         isDashing = true;
+
         dashTimer = dashDuration;
+
         dashDirection = direction;
     }
 
