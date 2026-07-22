@@ -16,6 +16,11 @@ public class PlayerController : MonoBehaviour
     private Vector3 moveInput;
 
 
+    // アクション制御
+    private bool isActionPlaying = false;
+    private float actionTimer = 0f;
+
+
     // 剛掌波
     private bool isGoshoCharging = false;
     public float goshoChargeLimit = 3f;
@@ -26,10 +31,11 @@ public class PlayerController : MonoBehaviour
     public GameObject chargeBall;
 
 
-    // ★剛掌波SE
+    // 剛掌波SE
     public AudioSource audioSource;
-    public AudioClip goshoChargeSE; // ため音
-    public AudioClip goshoFireSE;   // 発射音
+    public AudioClip goshoChargeSE;
+    public AudioClip goshoFireSE;
+
 
 
     void Start()
@@ -40,14 +46,26 @@ public class PlayerController : MonoBehaviour
         if (chargeBall != null)
             chargeBall.SetActive(false);
 
-        // AudioSourceがなければ自動追加
         if (audioSource == null)
             audioSource = gameObject.AddComponent<AudioSource>();
     }
 
 
+
     void Update()
     {
+        // アクション解除タイマー
+        if (isActionPlaying)
+        {
+            actionTimer -= Time.deltaTime;
+
+            if (actionTimer <= 0f)
+            {
+                isActionPlaying = false;
+            }
+        }
+
+
         bool punchPressed = Input.GetKeyDown(KeyCode.F);
         bool goshoChargePressed = Input.GetKeyDown(KeyCode.O);
         bool goshoFirePressed = Input.GetKeyDown(KeyCode.P);
@@ -60,8 +78,10 @@ public class PlayerController : MonoBehaviour
         bool emoteRightPressed = Input.GetKeyDown(KeyCode.RightArrow);
 
 
+
         float hPad = 0f;
         float vPad = 0f;
+
 
 
         if (Gamepad.all.Count > 0)
@@ -101,11 +121,14 @@ public class PlayerController : MonoBehaviour
         }
 
 
+
         float hKb = Input.GetKey(KeyCode.A) ? -1f :
                     Input.GetKey(KeyCode.D) ? 1f : 0f;
 
+
         float vKb = Input.GetKey(KeyCode.W) ? 1f :
                     Input.GetKey(KeyCode.S) ? -1f : 0f;
+
 
 
         float h = Mathf.Abs(hPad) > 0.1f ? hPad : hKb;
@@ -117,7 +140,7 @@ public class PlayerController : MonoBehaviour
 
 
         // パンチ
-        if (punchPressed && animator != null)
+        if (punchPressed && animator != null && !isActionPlaying)
         {
             animator.SetTrigger("Attack");
         }
@@ -125,9 +148,11 @@ public class PlayerController : MonoBehaviour
 
 
         // 剛掌波チャージ
-        // 剛掌波チャージ
-        if (goshoChargePressed && !isGoshoCharging)
+        if (goshoChargePressed && !isGoshoCharging && !isActionPlaying)
         {
+            isActionPlaying = true;
+            actionTimer = 3f;
+
             isGoshoCharging = true;
             goshoTimer = goshoChargeLimit;
 
@@ -140,7 +165,6 @@ public class PlayerController : MonoBehaviour
                 chargeBall.SetActive(true);
 
 
-            // ★Oを押した時にため音
             if (audioSource != null && goshoChargeSE != null)
             {
                 audioSource.PlayOneShot(goshoChargeSE);
@@ -172,28 +196,43 @@ public class PlayerController : MonoBehaviour
             FireGoshoBeam();
 
             isGoshoCharging = false;
+            isActionPlaying = false;
 
 
             if (chargeBall != null)
                 chargeBall.SetActive(false);
         }
 
-
-
         // エモート
-        if (animator != null)
+        if (animator != null && !isActionPlaying)
         {
             if (emoteUpPressed)
+            {
                 animator.SetTrigger("EmoteUp");
+                isActionPlaying = true;
+                actionTimer = 2f;
+            }
 
             if (emoteDownPressed)
+            {
                 animator.SetTrigger("EmoteDown");
+                isActionPlaying = true;
+                actionTimer = 2f;
+            }
 
             if (emoteLeftPressed)
+            {
                 animator.SetTrigger("EmoteLeft");
+                isActionPlaying = true;
+                actionTimer = 2f;
+            }
 
             if (emoteRightPressed)
+            {
                 animator.SetTrigger("EmoteRight");
+                isActionPlaying = true;
+                actionTimer = 2f;
+            }
         }
 
 
@@ -230,7 +269,7 @@ public class PlayerController : MonoBehaviour
         }
 
 
-        // ★Pを押した時に発射音
+        // 発射音
         if (audioSource != null && goshoFireSE != null)
         {
             audioSource.PlayOneShot(goshoFireSE);
@@ -258,8 +297,10 @@ public class PlayerController : MonoBehaviour
         float hKb = Input.GetKey(KeyCode.A) ? -1f :
                     Input.GetKey(KeyCode.D) ? 1f : 0f;
 
+
         float vKb = Input.GetKey(KeyCode.W) ? 1f :
                     Input.GetKey(KeyCode.S) ? -1f : 0f;
+
 
 
         float h = Mathf.Abs(hPad) > 0.1f ? hPad : hKb;
@@ -301,5 +342,13 @@ public class PlayerController : MonoBehaviour
         {
             Debug.Log("敵に当たった！");
         }
+    }
+
+
+
+    // Animation Event用（後で使える）
+    public void EndAction()
+    {
+        isActionPlaying = false;
     }
 }
