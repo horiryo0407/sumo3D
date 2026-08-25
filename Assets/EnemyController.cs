@@ -15,85 +15,62 @@ public class EnemyController : MonoBehaviour
     private Vector3 dashDirection;
     private Vector3 moveInput;
 
+    // =========================
+    // パンチ判定用
+    // =========================
+    public PunchHitbox punchHitbox;
 
     // =========================
     // アクション制御
     // =========================
-
     private bool isActionPlaying = false;
     private float actionTimer = 0f;
-
+    public float punchDuration = 0.4f; // パンチ中の行動不能時間（モーションに合わせて調整）
 
     // =========================
     // 剛掌波
     // =========================
-
     private bool isGoshoCharging = false;
-
     public float goshoChargeLimit = 3f;
-
     private float goshoTimer = 0f;
 
     public GameObject goshoBeamPrefab;
     public Transform goshoPoint;
     public GameObject chargeBall;
 
-
     // =========================
     // 剛掌波SE
     // =========================
-
     public AudioSource audioSource;
-
     public AudioClip goshoChargeSE;
     public AudioClip goshoFireSE;
-
-
 
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-
         animator = GetComponentInChildren<Animator>();
 
-
-        // 最初はため玉を非表示
         if (chargeBall != null)
         {
             chargeBall.SetActive(false);
         }
 
-
-        // AudioSourceがなければ自動追加
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
     }
 
-
-
     void Update()
     {
-        // =========================
-        // アクション解除タイマー
-        // =========================
-
         if (isActionPlaying)
         {
             actionTimer -= Time.deltaTime;
-
             if (actionTimer <= 0f)
             {
                 isActionPlaying = false;
             }
         }
-
-
-
-        // =========================
-        // 入力
-        // =========================
 
         float h = 0f;
         float v = 0f;
@@ -103,211 +80,64 @@ public class EnemyController : MonoBehaviour
         bool goshoChargePressed = false;
         bool goshoFirePressed = false;
 
-
-
-        // =========================
-        // 2Pコントローラー
-        // =========================
-
+        // --- 2Pコントローラー ---
         if (Gamepad.all.Count > 1)
         {
             var gamepad = Gamepad.all[1];
 
-            // 左スティック
             Vector2 stick = gamepad.leftStick.ReadValue();
-
             h = stick.x;
             v = stick.y;
 
-
-            // A → ダッシュ
-            if (gamepad.buttonSouth.wasPressedThisFrame)
-            {
-                isDashPressed = true;
-            }
-
-
-            // B → パンチ
-            if (gamepad.buttonEast.wasPressedThisFrame)
-            {
-                punchPressed = true;
-            }
-
-
-            // Y → 剛掌波ため
-            if (gamepad.buttonNorth.wasPressedThisFrame)
-            {
-                goshoChargePressed = true;
-            }
-
-
-            // X → 剛掌波発射
-            if (gamepad.buttonWest.wasPressedThisFrame)
-            {
-                goshoFirePressed = true;
-            }
+            if (gamepad.buttonSouth.wasPressedThisFrame) isDashPressed = true;        // A -> ダッシュ
+            if (gamepad.buttonEast.wasPressedThisFrame) punchPressed = true;          // B -> パンチ
+            if (gamepad.buttonNorth.wasPressedThisFrame) goshoChargePressed = true;  // Y -> 剛掌波ため
+            if (gamepad.buttonWest.wasPressedThisFrame) goshoFirePressed = true;      // X -> 剛掌波発射
         }
 
-
-
-        // =========================
-        // キーボード移動
-        // =========================
-
+        // --- キーボード移動 ---
         float h_kb = 0f;
         float v_kb = 0f;
 
+        if (Input.GetKey(KeyCode.LeftArrow)) h_kb = -1f;
+        if (Input.GetKey(KeyCode.RightArrow)) h_kb = 1f;
+        if (Input.GetKey(KeyCode.UpArrow)) v_kb = 1f;
+        if (Input.GetKey(KeyCode.DownArrow)) v_kb = -1f;
 
-        if (Input.GetKey(KeyCode.LeftArrow))
-        {
-            h_kb = -1f;
-        }
+        float finalH = Mathf.Abs(h) > 0.1f ? h : h_kb;
+        float finalV = Mathf.Abs(v) > 0.1f ? v : v_kb;
 
-        if (Input.GetKey(KeyCode.RightArrow))
-        {
-            h_kb = 1f;
-        }
+        moveInput = new Vector3(-finalH, 0f, -finalV).normalized;
 
-        if (Input.GetKey(KeyCode.UpArrow))
-        {
-            v_kb = 1f;
-        }
+        // --- キーボード アクション ---
+        if (Input.GetKeyDown(KeyCode.Space)) isDashPressed = true;
+        if (Input.GetKeyDown(KeyCode.L)) punchPressed = true;
+        if (Input.GetKeyDown(KeyCode.K)) goshoChargePressed = true;
+        if (Input.GetKeyDown(KeyCode.J)) goshoFirePressed = true;
 
-        if (Input.GetKey(KeyCode.DownArrow))
-        {
-            v_kb = -1f;
-        }
-
-
-
-        // コントローラー優先
-        float finalH =
-            Mathf.Abs(h) > 0.1f
-            ? h
-            : h_kb;
-
-
-        float finalV =
-            Mathf.Abs(v) > 0.1f
-            ? v
-            : v_kb;
-
-
-
-        moveInput =
-            new Vector3(
-                -finalH,
-                0f,
-                -finalV
-            ).normalized;
-
-
-
-        // =========================
-        // キーボード アクション
-        // =========================
-
-        // Space → ダッシュ
-        if (Input.GetKeyDown(KeyCode.Space))
-        {
-            isDashPressed = true;
-        }
-
-
-        // L → パンチ
-        if (Input.GetKeyDown(KeyCode.L))
-        {
-            punchPressed = true;
-        }
-
-
-        // K → 剛掌波ため
-        if (Input.GetKeyDown(KeyCode.K))
-        {
-            goshoChargePressed = true;
-        }
-
-
-        // J → 剛掌波発射
-        if (Input.GetKeyDown(KeyCode.J))
-        {
-            goshoFirePressed = true;
-        }
-
-
-
-        // =========================
-        // パンチ
-        // =========================
-
-        if (punchPressed)
-        {
-            Punch();
-        }
-
-
-
-        // =========================
-        // 剛掌波ため
-        // =========================
-
-        if (goshoChargePressed)
-        {
-            StartGosho();
-        }
-
-
-
-        // =========================
-        // 剛掌波発射
-        // =========================
-
-        if (goshoFirePressed)
-        {
-            FireGosho();
-        }
-
-
-
-        // =========================
-        // 剛掌波チャージ中
-        // =========================
+        // アクション実行（パンチ優先）
+        if (punchPressed) Punch();
+        if (goshoChargePressed) StartGosho();
+        if (goshoFirePressed) FireGosho();
 
         if (isGoshoCharging)
         {
             goshoTimer -= Time.deltaTime;
-
-
             if (goshoTimer <= 0f)
             {
                 CancelGosho();
             }
         }
 
-
-
-        // =========================
-        // ダッシュ開始
-        // =========================
-
-        if (!isDashing &&
-            moveInput.magnitude > 0.1f &&
-            isDashPressed)
+        // ダッシュ開始制御（アクション実行中でない場合のみ）
+        if (!isDashing && !isActionPlaying && moveInput.magnitude > 0.1f && isDashPressed)
         {
             StartDash(moveInput);
         }
 
-
-
-        // =========================
-        // ダッシュ中
-        // =========================
-
         if (isDashing)
         {
             dashTimer -= Time.deltaTime;
-
-
             if (dashTimer <= 0f)
             {
                 isDashing = false;
@@ -315,288 +145,142 @@ public class EnemyController : MonoBehaviour
         }
     }
 
-
-
     // =========================
-    // パンチ
+    // パンチ（移動強制キャンセル対応）
     // =========================
-
     void Punch()
     {
-        // 他のアクション中はパンチしない
-        if (animator == null)
-            return;
+        if (animator == null || isGoshoCharging) return;
 
-        if (isActionPlaying)
-            return;
+        // --- 移動・ダッシュを即座に停止させる ---
+        isDashing = false;
+        moveInput = Vector3.zero;
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero; // Unity 6表記（旧バージョンなら rb.velocity = Vector3.zero;）
+        }
 
-        if (isGoshoCharging)
-            return;
-
+        // アクション再生中に設定して移動入力によるポジション更新をロック
+        isActionPlaying = true;
+        actionTimer = punchDuration;
 
         animator.SetTrigger("Attack");
+
+        if (punchHitbox != null)
+        {
+            punchHitbox.EnableHitbox();
+            CancelInvoke(nameof(DisablePunchHitbox));
+            Invoke(nameof(DisablePunchHitbox), 0.3f);
+        }
     }
 
-
+    void DisablePunchHitbox()
+    {
+        if (punchHitbox != null)
+        {
+            punchHitbox.DisableHitbox();
+        }
+    }
 
     // =========================
     // 剛掌波ため開始
     // =========================
-
     void StartGosho()
     {
-        // すでにため中なら無視
-        if (isGoshoCharging)
-            return;
-
-
-        // 他のアクション中なら無視
-        if (isActionPlaying)
-            return;
-
+        if (isGoshoCharging || isActionPlaying) return;
 
         isActionPlaying = true;
-
         actionTimer = goshoChargeLimit;
-
-
         isGoshoCharging = true;
-
         goshoTimer = goshoChargeLimit;
 
-
-
-        // 剛掌波アニメーション
-        if (animator != null)
-        {
-            animator.SetTrigger("Gosho");
-        }
-
-
-
-        // ため玉表示
-        if (chargeBall != null)
-        {
-            chargeBall.SetActive(true);
-        }
-
-
-
-        // ため音
-        if (audioSource != null &&
-            goshoChargeSE != null)
-        {
-            audioSource.PlayOneShot(goshoChargeSE);
-        }
+        if (animator != null) animator.SetTrigger("Gosho");
+        if (chargeBall != null) chargeBall.SetActive(true);
+        if (audioSource != null && goshoChargeSE != null) audioSource.PlayOneShot(goshoChargeSE);
     }
-
-
 
     // =========================
     // 剛掌波発射
     // =========================
-
     void FireGosho()
     {
-        // ためていないなら発射しない
-        if (!isGoshoCharging)
-            return;
+        if (!isGoshoCharging) return;
 
-
-        // ビーム発射
         FireGoshoBeam();
-
-
-        // 状態解除
         isGoshoCharging = false;
-
         isActionPlaying = false;
 
-
-        // ため玉非表示
-        if (chargeBall != null)
-        {
-            chargeBall.SetActive(false);
-        }
+        if (chargeBall != null) chargeBall.SetActive(false);
     }
-
-
-
-    // =========================
-    // チャージキャンセル
-    // =========================
 
     void CancelGosho()
     {
         isGoshoCharging = false;
-
         isActionPlaying = false;
-
-
-        if (chargeBall != null)
-        {
-            chargeBall.SetActive(false);
-        }
+        if (chargeBall != null) chargeBall.SetActive(false);
     }
-
-
-
-    // =========================
-    // ビーム生成
-    // =========================
 
     void FireGoshoBeam()
     {
-        if (goshoBeamPrefab != null &&
-            goshoPoint != null)
+        if (goshoBeamPrefab != null && goshoPoint != null)
         {
-            Instantiate(
-                goshoBeamPrefab,
-                goshoPoint.position,
-                goshoPoint.rotation
-            );
+            Instantiate(goshoBeamPrefab, goshoPoint.position, goshoPoint.rotation);
         }
-
-
-        // 発射音
-        if (audioSource != null &&
-            goshoFireSE != null)
-        {
-            audioSource.PlayOneShot(goshoFireSE);
-        }
+        if (audioSource != null && goshoFireSE != null) audioSource.PlayOneShot(goshoFireSE);
     }
-
-
-
-    // =========================
-    // ダッシュ
-    // =========================
 
     void StartDash(Vector3 direction)
     {
         isDashing = true;
-
         dashTimer = dashDuration;
-
         dashDirection = direction;
     }
 
-
-
-    // =========================
-    // FixedUpdate
-    // =========================
-
     void FixedUpdate()
     {
-        // =========================
-        // アニメーション用移動量
-        // =========================
+        // アクション実行中は物理移動をロック
+        if (isActionPlaying)
+        {
+            if (animator != null) animator.SetFloat("Speed", 0f);
+            return;
+        }
 
         float h = 0f;
         float v = 0f;
 
-
-        // 2Pコントローラー
         if (Gamepad.all.Count > 1)
         {
-            Vector2 stick =
-                Gamepad.all[1].leftStick.ReadValue();
-
+            Vector2 stick = Gamepad.all[1].leftStick.ReadValue();
             h = stick.x;
             v = stick.y;
         }
 
-
-
-        // キーボード
         float h_kb = 0f;
         float v_kb = 0f;
 
+        if (Input.GetKey(KeyCode.LeftArrow)) h_kb = -1f;
+        if (Input.GetKey(KeyCode.RightArrow)) h_kb = 1f;
+        if (Input.GetKey(KeyCode.UpArrow)) v_kb = 1f;
+        if (Input.GetKey(KeyCode.DownArrow)) v_kb = -1f;
 
-        if (Input.GetKey(KeyCode.LeftArrow))
-        {
-            h_kb = -1f;
-        }
+        float finalH = Mathf.Abs(h) > 0.1f ? h : h_kb;
+        float finalV = Mathf.Abs(v) > 0.1f ? v : v_kb;
 
-        if (Input.GetKey(KeyCode.RightArrow))
-        {
-            h_kb = 1f;
-        }
+        float moveAmount = Mathf.Abs(finalH) + Mathf.Abs(finalV);
 
-        if (Input.GetKey(KeyCode.UpArrow))
-        {
-            v_kb = 1f;
-        }
-
-        if (Input.GetKey(KeyCode.DownArrow))
-        {
-            v_kb = -1f;
-        }
-
-
-
-        // コントローラー優先
-        float finalH =
-            Mathf.Abs(h) > 0.1f
-            ? h
-            : h_kb;
-
-
-        float finalV =
-            Mathf.Abs(v) > 0.1f
-            ? v
-            : v_kb;
-
-
-
-        float moveAmount =
-            Mathf.Abs(finalH) +
-            Mathf.Abs(finalV);
-
-
-
-        // Animator
         if (animator != null)
         {
-            animator.SetFloat(
-                "Speed",
-                moveAmount
-            );
+            animator.SetFloat("Speed", moveAmount);
         }
-
-
-
-        // =========================
-        // 移動
-        // =========================
 
         if (isDashing)
         {
-            rb.MovePosition(
-                rb.position +
-                dashDirection *
-                dashSpeed *
-                Time.fixedDeltaTime
-            );
-
+            rb.MovePosition(rb.position + dashDirection * dashSpeed * Time.fixedDeltaTime);
             return;
         }
 
-
-        rb.MovePosition(
-            rb.position +
-            moveInput *
-            speed *
-            Time.fixedDeltaTime
-        );
+        rb.MovePosition(rb.position + moveInput * speed * Time.fixedDeltaTime);
     }
-
-
-
-    // =========================
-    // Animation Event用
-    // =========================
 
     public void EndAction()
     {
