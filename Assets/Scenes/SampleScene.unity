@@ -152,7 +152,7 @@ MonoBehaviour:
   enemy: {fileID: 1082324323}
   fallY: -5
   stage: {fileID: 946183581}
-  shrinkSpeed: 0.2
+  shrinkSpeed: 0
   minSize: 1
 --- !u!4 &266132420
 Transform:
@@ -1287,7 +1287,7 @@ SphereCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Radius: 0.2
+  m_Radius: 0.7
   m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &1498464834
 MonoBehaviour:
