@@ -1094,6 +1094,7 @@ MonoBehaviour:
   goshoBeamPrefab: {fileID: 4329467905389501129, guid: 3ede23e9b1b70b7429315081e411e873, type: 3}
   goshoPoint: {fileID: 888663948}
   chargeBall: {fileID: 1567560631}
+  goshoChargeEffect: {fileID: 1601934299}
   goshoCooldown: 5
   goshoCooldownText: {fileID: 327300953}
   audioSource: {fileID: 0}

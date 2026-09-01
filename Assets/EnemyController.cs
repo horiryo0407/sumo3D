@@ -22,10 +22,15 @@ public class EnemyController : MonoBehaviour
 
 
     // =========================
-    // 攻撃・Hitbox設定
+    // パンチ判定用
     // =========================
 
     public PunchHitbox punchHitbox;
+
+
+    // =========================
+    // アクション制御
+    // =========================
 
     private bool isActionPlaying = false;
     private float actionTimer = 0f;
@@ -45,7 +50,12 @@ public class EnemyController : MonoBehaviour
 
     public GameObject goshoBeamPrefab;
     public Transform goshoPoint;
+
+    // チャージ玉
     public GameObject chargeBall;
+
+    // チャージ中エフェクト
+    public GameObject goshoChargeEffect;
 
 
     // =========================
@@ -82,21 +92,40 @@ public class EnemyController : MonoBehaviour
         animator = GetComponentInChildren<Animator>();
 
 
-        // 最初はため玉を非表示
+        // =========================
+        // 最初はチャージ玉を非表示
+        // =========================
+
         if (chargeBall != null)
         {
             chargeBall.SetActive(false);
         }
 
 
-        // AudioSourceがなければ自動追加
+        // =========================
+        // 最初はチャージエフェクトを非表示
+        // =========================
+
+        if (goshoChargeEffect != null)
+        {
+            goshoChargeEffect.SetActive(false);
+        }
+
+
+        // =========================
+        // AudioSource
+        // =========================
+
         if (audioSource == null)
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
 
 
-        // 最初の表示
+        // =========================
+        // クールダウン表示
+        // =========================
+
         if (goshoCooldownText != null)
         {
             goshoCooldownText.text = "剛掌波：使用可能";
@@ -122,6 +151,7 @@ public class EnemyController : MonoBehaviour
         }
 
 
+
         // =========================
         // 剛掌波クールダウン
         // =========================
@@ -137,7 +167,6 @@ public class EnemyController : MonoBehaviour
         }
 
 
-        // クールダウン表示
         UpdateGoshoCooldownText();
 
 
@@ -153,6 +182,7 @@ public class EnemyController : MonoBehaviour
         bool punchPressed = false;
         bool goshoChargePressed = false;
         bool goshoFirePressed = false;
+
 
 
         // =========================
@@ -176,8 +206,8 @@ public class EnemyController : MonoBehaviour
             }
 
 
-            // X → パンチ
-            if (gamepad.buttonWest.wasPressedThisFrame)
+            // B → パンチ
+            if (gamepad.buttonEast.wasPressedThisFrame)
             {
                 punchPressed = true;
             }
@@ -190,8 +220,8 @@ public class EnemyController : MonoBehaviour
             }
 
 
-            // B → 剛掌波発射
-            if (gamepad.buttonEast.wasPressedThisFrame)
+            // X → 剛掌波発射
+            if (gamepad.buttonWest.wasPressedThisFrame)
             {
                 goshoFirePressed = true;
             }
@@ -243,7 +273,6 @@ public class EnemyController : MonoBehaviour
             Mathf.Abs(v) > 0.1f
             ? v
             : v_kb;
-
 
 
         moveInput =
@@ -377,7 +406,7 @@ public class EnemyController : MonoBehaviour
         }
 
 
-        // 剛掌波チャージ中
+        // 剛掌波チャージ中はパンチできない
         if (isGoshoCharging)
         {
             return;
@@ -445,7 +474,7 @@ public class EnemyController : MonoBehaviour
 
     void StartGosho()
     {
-        // クールダウン中なら使用不可
+        // クールダウン中
         if (goshoCooldownTimer > 0f)
         {
             return;
@@ -466,34 +495,62 @@ public class EnemyController : MonoBehaviour
         }
 
 
+        // =========================
         // アクション開始
+        // =========================
+
         isActionPlaying = true;
 
         actionTimer = goshoChargeLimit;
 
 
+        // =========================
         // チャージ開始
+        // =========================
+
         isGoshoCharging = true;
 
         goshoTimer = goshoChargeLimit;
 
 
 
-        // モーション
+        // =========================
+        // 剛掌波モーション
+        // =========================
+
         if (animator != null)
         {
             animator.SetTrigger("Gosho");
         }
 
 
-        // ため玉
+
+        // =========================
+        // チャージ玉表示
+        // =========================
+
         if (chargeBall != null)
         {
             chargeBall.SetActive(true);
         }
 
 
-        // ため音
+
+        // =========================
+        // チャージエフェクト表示
+        // =========================
+
+        if (goshoChargeEffect != null)
+        {
+            goshoChargeEffect.SetActive(true);
+        }
+
+
+
+        // =========================
+        // チャージSE
+        // =========================
+
         if (audioSource != null &&
             goshoChargeSE != null)
         {
@@ -518,24 +575,46 @@ public class EnemyController : MonoBehaviour
         }
 
 
+        // =========================
         // ビーム発射
+        // =========================
+
         FireGoshoBeam();
 
 
+        // =========================
         // チャージ終了
+        // =========================
+
         isGoshoCharging = false;
 
         isActionPlaying = false;
 
 
+        // =========================
         // クールダウン開始
+        // =========================
+
         goshoCooldownTimer = goshoCooldown;
 
 
-        // ため玉消す
+        // =========================
+        // チャージ玉を消す
+        // =========================
+
         if (chargeBall != null)
         {
             chargeBall.SetActive(false);
+        }
+
+
+        // =========================
+        // チャージエフェクトを消す
+        // =========================
+
+        if (goshoChargeEffect != null)
+        {
+            goshoChargeEffect.SetActive(false);
         }
     }
 
@@ -552,9 +631,17 @@ public class EnemyController : MonoBehaviour
         isActionPlaying = false;
 
 
+        // チャージ玉を消す
         if (chargeBall != null)
         {
             chargeBall.SetActive(false);
+        }
+
+
+        // チャージエフェクトを消す
+        if (goshoChargeEffect != null)
+        {
+            goshoChargeEffect.SetActive(false);
         }
     }
 
@@ -601,40 +688,18 @@ public class EnemyController : MonoBehaviour
         }
 
 
-        // -------------------------
-        // チャージ中
-        // -------------------------
-
-        if (isGoshoCharging)
-        {
-            goshoCooldownText.text =
-                "剛掌波：チャージ中";
-
-            return;
-        }
-
-
-        // -------------------------
-        // クールダウン中
-        // -------------------------
-
         if (goshoCooldownTimer > 0f)
         {
             goshoCooldownText.text =
                 "剛掌波：あと " +
                 goshoCooldownTimer.ToString("F1") +
                 " 秒";
-
-            return;
         }
-
-
-        // -------------------------
-        // 使用可能
-        // -------------------------
-
-        goshoCooldownText.text =
-            "剛掌波：使用可能";
+        else
+        {
+            goshoCooldownText.text =
+                "剛掌波：使用可能";
+        }
     }
 
 
@@ -660,7 +725,10 @@ public class EnemyController : MonoBehaviour
 
     void FixedUpdate()
     {
-        // アクション中は移動しない
+        // =========================
+        // アクション中は移動停止
+        // =========================
+
         if (isActionPlaying)
         {
             if (animator != null)
@@ -676,12 +744,14 @@ public class EnemyController : MonoBehaviour
 
 
 
+        // =========================
+        // 移動入力
+        // =========================
+
         float h = 0f;
         float v = 0f;
 
 
-
-        // 2Pコントローラー
         if (Gamepad.all.Count > 1)
         {
             Vector2 stick =
@@ -751,7 +821,10 @@ public class EnemyController : MonoBehaviour
 
 
 
+        // =========================
         // ダッシュ
+        // =========================
+
         if (isDashing)
         {
             rb.MovePosition(
@@ -766,7 +839,10 @@ public class EnemyController : MonoBehaviour
 
 
 
+        // =========================
         // 通常移動
+        // =========================
+
         rb.MovePosition(
             rb.position +
             moveInput *
