@@ -84,6 +84,13 @@ public class EnemyController : MonoBehaviour
     public AudioClip goshoFireSE;
 
 
+    // =========================
+    // エモート設定
+    // =========================
+
+    public float emoteDuration = 1.5f; // エモートの再生時間
+
+
 
     void Start()
     {
@@ -140,7 +147,7 @@ public class EnemyController : MonoBehaviour
         // アクション解除タイマー
         // =========================
 
-        if (isActionPlaying)
+        if (isActionPlaying && !isGoshoCharging)
         {
             actionTimer -= Time.deltaTime;
 
@@ -180,13 +187,15 @@ public class EnemyController : MonoBehaviour
 
         bool isDashPressed = false;
         bool punchPressed = false;
-        bool goshoChargePressed = false;
-        bool goshoFirePressed = false;
+        bool goshoChargeHeld = false;
+        bool goshoChargeReleased = false;
+
+        string emoteTrigger = "";
 
 
 
         // =========================
-        // 2P コントローラー
+        // 2P コントローラー（Xbox配置対応）
         // =========================
 
         if (Gamepad.all.Count > 1)
@@ -206,25 +215,37 @@ public class EnemyController : MonoBehaviour
             }
 
 
-            // B → パンチ
-            if (gamepad.buttonEast.wasPressedThisFrame)
+            // X → パンチ（Xbox配置対応）
+            if (gamepad.buttonWest.wasPressedThisFrame)
             {
                 punchPressed = true;
             }
 
 
-            // Y → 剛掌波ため
-            if (gamepad.buttonNorth.wasPressedThisFrame)
+            // Y → 剛掌波ため（長押し判定）
+            if (gamepad.buttonNorth.isPressed)
             {
-                goshoChargePressed = true;
+                goshoChargeHeld = true;
+            }
+
+            if (gamepad.buttonNorth.wasReleasedThisFrame)
+            {
+                goshoChargeReleased = true;
             }
 
 
-            // X → 剛掌波発射
-            if (gamepad.buttonWest.wasPressedThisFrame)
+            // B → 剛掌波発射（単体押し時の予備）
+            if (gamepad.buttonEast.wasPressedThisFrame)
             {
-                goshoFirePressed = true;
+                goshoChargeReleased = true;
             }
+
+
+            // D-Pad (十字キー) → エモートTrigger呼び出し
+            if (gamepad.dpad.up.wasPressedThisFrame) emoteTrigger = "EmoteUp";
+            if (gamepad.dpad.down.wasPressedThisFrame) emoteTrigger = "EmoteDown";
+            if (gamepad.dpad.left.wasPressedThisFrame) emoteTrigger = "EmoteLeft";
+            if (gamepad.dpad.right.wasPressedThisFrame) emoteTrigger = "EmoteRight";
         }
 
 
@@ -302,17 +323,40 @@ public class EnemyController : MonoBehaviour
         }
 
 
-        // K → 剛掌波ため
-        if (Input.GetKeyDown(KeyCode.K))
+        // K → 剛掌波ため（長押し・解放）
+        if (Input.GetKey(KeyCode.K))
         {
-            goshoChargePressed = true;
+            goshoChargeHeld = true;
+        }
+
+        if (Input.GetKeyUp(KeyCode.K))
+        {
+            goshoChargeReleased = true;
         }
 
 
-        // J → 剛掌波発射
+        // J → 剛掌波即時発射
         if (Input.GetKeyDown(KeyCode.J))
         {
-            goshoFirePressed = true;
+            goshoChargeReleased = true;
+        }
+
+
+        // 数字キー 1~4 → エモートTrigger呼び出し
+        if (Input.GetKeyDown(KeyCode.Alpha1)) emoteTrigger = "EmoteUp";
+        if (Input.GetKeyDown(KeyCode.Alpha2)) emoteTrigger = "EmoteDown";
+        if (Input.GetKeyDown(KeyCode.Alpha3)) emoteTrigger = "EmoteLeft";
+        if (Input.GetKeyDown(KeyCode.Alpha4)) emoteTrigger = "EmoteRight";
+
+
+
+        // =========================
+        // エモート再生
+        // =========================
+
+        if (!string.IsNullOrEmpty(emoteTrigger))
+        {
+            PlayEmote(emoteTrigger);
         }
 
 
@@ -329,39 +373,21 @@ public class EnemyController : MonoBehaviour
 
 
         // =========================
-        // 剛掌波ため
+        // 剛掌波ため・発射ロジック
         // =========================
 
-        if (goshoChargePressed)
+        if (goshoChargeHeld && !isGoshoCharging)
         {
             StartGosho();
         }
-
-
-
-        // =========================
-        // 剛掌波発射
-        // =========================
-
-        if (goshoFirePressed)
-        {
-            FireGosho();
-        }
-
-
-
-        // =========================
-        // 剛掌波チャージ中
-        // =========================
 
         if (isGoshoCharging)
         {
             goshoTimer -= Time.deltaTime;
 
-
-            if (goshoTimer <= 0f)
+            if (goshoChargeReleased || goshoTimer <= 0f)
             {
-                CancelGosho();
+                FireGosho();
             }
         }
 
@@ -389,6 +415,42 @@ public class EnemyController : MonoBehaviour
             {
                 isDashing = false;
             }
+        }
+    }
+
+
+
+    // =========================
+    // エモート処理
+    // =========================
+
+    void PlayEmote(string triggerName)
+    {
+        if (isActionPlaying || isGoshoCharging || isDashing)
+        {
+            return;
+        }
+
+
+        // 移動停止
+        moveInput = Vector3.zero;
+
+        if (rb != null)
+        {
+            rb.linearVelocity = Vector3.zero;
+        }
+
+
+        // アクション状態の開始
+        isActionPlaying = true;
+
+        actionTimer = emoteDuration;
+
+
+        // Animator制御（画像のTrigger名をセット）
+        if (animator != null)
+        {
+            animator.SetTrigger(triggerName);
         }
     }
 
@@ -501,8 +563,6 @@ public class EnemyController : MonoBehaviour
 
         isActionPlaying = true;
 
-        actionTimer = goshoChargeLimit;
-
 
         // =========================
         // チャージ開始
@@ -612,33 +672,6 @@ public class EnemyController : MonoBehaviour
         // チャージエフェクトを消す
         // =========================
 
-        if (goshoChargeEffect != null)
-        {
-            goshoChargeEffect.SetActive(false);
-        }
-    }
-
-
-
-    // =========================
-    // 剛掌波キャンセル
-    // =========================
-
-    void CancelGosho()
-    {
-        isGoshoCharging = false;
-
-        isActionPlaying = false;
-
-
-        // チャージ玉を消す
-        if (chargeBall != null)
-        {
-            chargeBall.SetActive(false);
-        }
-
-
-        // チャージエフェクトを消す
         if (goshoChargeEffect != null)
         {
             goshoChargeEffect.SetActive(false);

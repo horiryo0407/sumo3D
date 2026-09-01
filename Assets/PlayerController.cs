@@ -34,6 +34,15 @@ public class PlayerController : MonoBehaviour
 
 
     // =========================
+    // エモート設定
+    // =========================
+
+    private bool isEmoting = false;
+    public float emoteDuration = 1.5f; // エモートの持続時間（アニメーション長さに合わせて調整）
+    private float emoteTimer = 0f;
+
+
+    // =========================
     // 剛掌波
     // =========================
 
@@ -123,6 +132,21 @@ public class PlayerController : MonoBehaviour
 
 
         // =========================
+        // エモート解除タイマー
+        // =========================
+
+        if (isEmoting)
+        {
+            emoteTimer -= Time.deltaTime;
+
+            if (emoteTimer <= 0f)
+            {
+                isEmoting = false;
+            }
+        }
+
+
+        // =========================
         // 剛掌波クールダウン
         // =========================
 
@@ -142,7 +166,7 @@ public class PlayerController : MonoBehaviour
 
 
         // =========================
-        // 入力
+        // 入力判定用の変数初期化
         // =========================
 
         float h = 0f;
@@ -153,9 +177,15 @@ public class PlayerController : MonoBehaviour
         bool goshoChargePressed = false;
         bool goshoFirePressed = false;
 
+        // エモート用フラグ
+        bool emoteUpPressed = false;
+        bool emoteDownPressed = false;
+        bool emoteLeftPressed = false;
+        bool emoteRightPressed = false;
+
 
         // =========================
-        // 1P コントローラー
+        // 1P コントローラー (Xbox等)
         // =========================
 
         if (Gamepad.all.Count > 0)
@@ -168,31 +198,52 @@ public class PlayerController : MonoBehaviour
             v = stick.y;
 
 
-            // A → ダッシュ
+            // Aボタン → ダッシュ
             if (gamepad.buttonSouth.wasPressedThisFrame)
             {
                 isDashPressed = true;
             }
 
 
-            // X → パンチ
+            // Xボタン → パンチ
             if (gamepad.buttonWest.wasPressedThisFrame)
             {
                 punchPressed = true;
             }
 
 
-            // Y → 剛掌波ため
+            // Yボタン → 剛掌波ため (Xbox)
             if (gamepad.buttonNorth.wasPressedThisFrame)
             {
                 goshoChargePressed = true;
             }
 
 
-            // B → 剛掌波発射
+            // Bボタン → 剛掌波発射
             if (gamepad.buttonEast.wasPressedThisFrame)
             {
                 goshoFirePressed = true;
+            }
+
+            // 十字キー → エモート
+            if (gamepad.dpad.up.wasPressedThisFrame)
+            {
+                emoteUpPressed = true;
+            }
+
+            if (gamepad.dpad.down.wasPressedThisFrame)
+            {
+                emoteDownPressed = true;
+            }
+
+            if (gamepad.dpad.left.wasPressedThisFrame)
+            {
+                emoteLeftPressed = true;
+            }
+
+            if (gamepad.dpad.right.wasPressedThisFrame)
+            {
+                emoteRightPressed = true;
             }
         }
 
@@ -254,7 +305,7 @@ public class PlayerController : MonoBehaviour
 
 
         // =========================
-        // キーボード アクション
+        // キーボード アクション・エモート
         // =========================
 
         // Space → ダッシュ
@@ -263,25 +314,43 @@ public class PlayerController : MonoBehaviour
             isDashPressed = true;
         }
 
-
         // F → パンチ
         if (Input.GetKeyDown(KeyCode.F))
         {
             punchPressed = true;
         }
 
-
-        // G → 剛掌波ため
+        // G → 剛掌波ため (キーボード)
         if (Input.GetKeyDown(KeyCode.G))
         {
             goshoChargePressed = true;
         }
 
-
         // H → 剛掌波発射
         if (Input.GetKeyDown(KeyCode.H))
         {
             goshoFirePressed = true;
+        }
+
+        // 矢印キー → エモート
+        if (Input.GetKeyDown(KeyCode.UpArrow))
+        {
+            emoteUpPressed = true;
+        }
+
+        if (Input.GetKeyDown(KeyCode.DownArrow))
+        {
+            emoteDownPressed = true;
+        }
+
+        if (Input.GetKeyDown(KeyCode.LeftArrow))
+        {
+            emoteLeftPressed = true;
+        }
+
+        if (Input.GetKeyDown(KeyCode.RightArrow))
+        {
+            emoteRightPressed = true;
         }
 
 
@@ -298,7 +367,7 @@ public class PlayerController : MonoBehaviour
 
 
         // =========================
-        // 剛掌波ため
+        // 剛掌波ため（Xbox Yボタン / キーボード Gキー 共通）
         // =========================
 
         if (goshoChargePressed)
@@ -315,6 +384,32 @@ public class PlayerController : MonoBehaviour
         if (goshoFirePressed)
         {
             FireGosho();
+        }
+
+
+
+        // =========================
+        // エモート実行
+        // =========================
+
+        if (animator != null && !isActionPlaying && !isGoshoCharging && !isEmoting)
+        {
+            if (emoteUpPressed)
+            {
+                TriggerEmote("EmoteUp");
+            }
+            else if (emoteDownPressed)
+            {
+                TriggerEmote("EmoteDown");
+            }
+            else if (emoteLeftPressed)
+            {
+                TriggerEmote("EmoteLeft");
+            }
+            else if (emoteRightPressed)
+            {
+                TriggerEmote("EmoteRight");
+            }
         }
 
 
@@ -342,6 +437,7 @@ public class PlayerController : MonoBehaviour
 
         if (!isDashing &&
             !isActionPlaying &&
+            !isEmoting &&
             moveInput.magnitude > 0.1f &&
             isDashPressed)
         {
@@ -364,31 +460,28 @@ public class PlayerController : MonoBehaviour
 
 
     // =========================
+    // エモート共通処理
+    // =========================
+
+    void TriggerEmote(string triggerName)
+    {
+        animator.SetTrigger(triggerName);
+        isEmoting = true;
+        emoteTimer = emoteDuration;
+    }
+
+
+
+    // =========================
     // パンチ
     // =========================
 
     void Punch()
     {
-        // アニメーターがない
-        if (animator == null)
+        if (animator == null || isGoshoCharging || isActionPlaying || isEmoting)
         {
             return;
         }
-
-
-        // 剛掌波チャージ中
-        if (isGoshoCharging)
-        {
-            return;
-        }
-
-
-        // 他のアクション中
-        if (isActionPlaying)
-        {
-            return;
-        }
-
 
         // 移動停止
         isDashing = false;
@@ -444,26 +537,11 @@ public class PlayerController : MonoBehaviour
 
     void StartGosho()
     {
-        // クールダウン中なら使用不可
-        if (goshoCooldownTimer > 0f)
+        // クールダウン中・チャージ中・アクション中・エモート中は剛掌波ため不可
+        if (goshoCooldownTimer > 0f || isGoshoCharging || isActionPlaying || isEmoting)
         {
             return;
         }
-
-
-        // すでにチャージ中
-        if (isGoshoCharging)
-        {
-            return;
-        }
-
-
-        // 他のアクション中
-        if (isActionPlaying)
-        {
-            return;
-        }
-
 
         // アクション開始
         isActionPlaying = true;
@@ -510,7 +588,6 @@ public class PlayerController : MonoBehaviour
 
     void FireGosho()
     {
-        // チャージしていない
         if (!isGoshoCharging)
         {
             return;
@@ -599,20 +676,11 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        // =========================
-        // 剛掌波チャージ中
-        // =========================
-
         if (isGoshoCharging)
         {
             goshoCooldownText.text =
                 "剛掌波：チャージ中";
         }
-
-        // =========================
-        // クールダウン中
-        // =========================
-
         else if (goshoCooldownTimer > 0f)
         {
             goshoCooldownText.text =
@@ -620,11 +688,6 @@ public class PlayerController : MonoBehaviour
                 goshoCooldownTimer.ToString("F1") +
                 " 秒";
         }
-
-        // =========================
-        // 使用可能
-        // =========================
-
         else
         {
             goshoCooldownText.text =
@@ -655,8 +718,8 @@ public class PlayerController : MonoBehaviour
 
     void FixedUpdate()
     {
-        // アクション中は移動しない
-        if (isActionPlaying)
+        // アクション中またはエモート中は移動しない
+        if (isActionPlaying || isEmoting)
         {
             if (animator != null)
             {
@@ -778,5 +841,14 @@ public class PlayerController : MonoBehaviour
     public void EndAction()
     {
         isActionPlaying = false;
+        isEmoting = false;
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.name == "Enemy")
+        {
+            Debug.Log("敵に当たった！");
+        }
     }
 }
